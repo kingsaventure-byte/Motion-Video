@@ -161,3 +161,42 @@ def bit(p, x, y, value, t_change, t, size=120, a=1.0):
 def wobble(t, seed, amp=1.0, speed=1.0):
     from engine.noise import noise1
     return noise1(t * speed, seed) * amp, noise1(t * speed, seed + 97) * amp
+
+
+def keyword(p, text, t, x=960, y=930, size=64, color=St.TEXT, hold=2.2, glow=0.35, sub=None, sub_color=St.TEXT2):
+    """Mot-clé plein écran (bas de cadre) : apparition lettre à lettre puis sortie."""
+    if t <= 0 or t > hold + 1.2:
+        return
+    with p.fade(1 - prog(t, hold, 0.6, E.in_cubic)):
+        w = p.measure(text.upper(), size, 'display', 700, 0.04)
+        p.dots([x - w * 0.25, x + w * 0.25], [y - size * 0.3] * 2, [w * 0.55] * 2, St.BG_OUT, a=0.8 * prog(t, 0, 0.4),
+               sprite='soft')
+        p.text_reveal(text, x, y, t, size=size, family='display', weight=700, color=color, align='center',
+                      tracking=0.04, gap=0.035, dur=0.7, glow=glow, upper=True)
+        if sub:
+            p.text_reveal(sub, x, y + size * 0.75, t - 0.25, size=22, family='sans', weight=400, color=sub_color,
+                          align='center', gap=0.012)
+
+
+def bohr(p, x, y, t, shells=(2, 8, 4), radii=(70, 135, 205), a=1.0, inner_dim=0.0, outer_hot=0.0, nucleus='+14',
+         scale=1.0, shell_a=1.0):
+    """Atome de Bohr stylisé : noyau + couches tournantes."""
+    with p.fade(a):
+        p.glow_dot(x, y, 15 * scale, mix(St.AMBER, St.WHITE, 0.4), k=1.0)
+        p.circle(x, y, 26 * scale, fill=A(St.AMBER, 0.12))
+        if nucleus and scale > 0.6:
+            p.text(nucleus, x, y + 44 * scale, size=16 * scale, family='mono', weight=500, color=A(St.AMBER, 0.9),
+                   align='center')
+        for s, (n, r) in enumerate(zip(shells, radii)):
+            outer = s == len(shells) - 1
+            dim = 1.0 if outer else (1 - inner_dim * 0.75)
+            r = r * scale
+            p.circle(x, y, r, stroke=A(St.TEXT2, 0.28 * shell_a * dim), w=1.2)
+            w = (0.9 - s * 0.22) * (1 if s % 2 == 0 else -1)
+            xs, ys = [], []
+            for k in range(n):
+                ang = t * w + k * 2 * math.pi / n + s * 0.7
+                xs.append(x + math.cos(ang) * r)
+                ys.append(y + math.sin(ang) * r)
+            hot = outer_hot if outer else 0.0
+            electrons(p, np.array(xs), np.array(ys), r=(6.5 + 2.5 * hot) * max(scale, 0.6), a=dim, k=0.6 + 0.8 * hot)
