@@ -118,20 +118,20 @@ class Echelle(Scene):
         lz = self._lz(t, c)
         speed = (self._lz(t + 1 / 60, c) - self._lz(t - 1 / 60, c)) * 30   # décades / s
 
-        a3d = prog(t, c['proc'] - 0.7, 0.8) * (1 - prog(t, c['puce'] + 1.1, 0.6))
+        a3d = prog(t, 2.55, 0.7) * (1 - prog(t, c['puce'] + 1.25, 0.55))
         if a3d > 0:
             self._package(p, t, c, a3d)
 
-        a0 = prog(t, c['puce'] + 0.9, 0.7) * (1 - smoothstep(0.55, 0.95, lz))
+        a0 = prog(t, c['puce'] + 1.15, 0.55) * (1 - smoothstep(0.55, 0.95, lz))
         if a0 > 0:
             self._die(p, t, c, lz, a0)
-        a1 = smoothstep(0.45, 0.85, lz) * (1 - smoothstep(2.0, 2.6, lz))
+        a1 = smoothstep(0.45, 0.85, lz) * (1 - smoothstep(2.5, 3.0, lz))
         if a1 > 0:
             self._core(p, t, c, lz, a1, speed)
-        a2 = smoothstep(2.15, 2.75, lz) * (1 - smoothstep(4.25, 4.6, lz))
+        a2 = smoothstep(2.6, 3.1, lz) * (1 - smoothstep(4.25, 4.6, lz))
         if a2 > 0:
             self._cells(p, t, c, lz, a2, speed)
-        a3 = smoothstep(4.2, 4.6, lz) * (1 - smoothstep(5.35, 5.8, lz))
+        a3 = smoothstep(4.2, 4.6, lz) * (1 - smoothstep(5.55, 5.95, lz))
         if a3 > 0:
             self._forest(p, t, c, lz, a3)
         a4 = smoothstep(5.4, 5.9, lz)
@@ -167,41 +167,52 @@ class Echelle(Scene):
     # ------------------------------------------------------------- boîtier 3D
     def _package_cam(self, t, c):
         k = prog(t, c['puce'] - 0.1, 1.5, E.in_out_cubic)
-        yaw = lerp(-32 + 10 * prog(t, c['proc'] - 0.6, 7, E.out_sine), 0.0, k)
+        yaw = lerp(-32 + 10 * prog(t, 2.5, 7, E.out_sine), 0.0, k)
         pitch = lerp(36, 88.5, k)
-        dist = lerp(98, 25.6, k)
+        dist = lerp(98, 24.0, k)
         return Cam3D.orbit(target=(0, 1.6, 0), dist=dist, yaw=yaw, pitch=pitch, fov=30)
 
     def _package(self, p, t, c, a):
         cam = self._package_cam(t, c)
-        rise = (1 - prog(t, c['proc'] - 0.7, 1.2, E.snap)) * -6
+        rise = (1 - prog(t, 2.55, 1.2, E.snap)) * -6
         lift = prog(t, c['capot'] + 0.2, 1.5, E.in_out_cubic)
         a_lid = 1 - prog(t, c['plaque'] - 0.2, 1.0)
-        subs = hex2('#123F3A')
-        boxes = [Box((-18.75, rise, -18.75, 18.75, 1.2 + rise, 18.75), subs, edge=A(hex2('#3E8F7F'), 0.6), a=a,
-                     edge_w=1.0)]
-        # composants CMS autour
-        g = rng(4)
-        for i in range(14):
+        subs = hex2('#0F2E2C')
+        kd = prog(t, c['puce'] - 0.1, 1.5, E.in_out_cubic)
+        a_sub = a * (1 - prog(kd, 0.35, 0.45))
+        boxes = [Box((-18.75, rise, -18.75, 18.75, 1.2 + rise, 18.75), subs, top=hex2('#123834'),
+                     edge=A(hex2('#3E8F7F'), 0.5), a=a_sub, edge_w=1.0)]
+        for i in range(14):  # composants CMS autour
             ang = i / 14 * 2 * math.pi
             x, z = math.cos(ang) * 16.5, math.sin(ang) * 16.5
-            boxes.append(Box((x - 0.9, 1.2 + rise, z - 0.5, x + 0.9, 1.8 + rise, z + 0.5), hex2('#6B5A44'), a=a))
-        die_col = hex2('#1B2348')
-        shimmer = 0.10 + 0.18 * prog(t, c['plaque'], 1.0) + 0.25 * prog(t, c['puce'], 0.4) * (1 - prog(t, c['puce'] + 0.6, 1.0))
+            boxes.append(Box((x - 0.9, 1.2 + rise, z - 0.5, x + 0.9, 1.8 + rise, z + 0.5), hex2('#5E4F3C'), a=a_sub))
+        die_col = hex2('#161D3E')
+        hl = prog(t, c['puce'], 0.4) * (1 - prog(t, c['puce'] + 0.6, 1.0))
+        shimmer = 0.05 + 0.06 * prog(t, c['plaque'], 1.0) + 0.10 * hl
+
+        def die_sheen(pts):
+            (x0, y0), (x1, y1) = pts[0], pts[2]
+            ph = (t * 0.25) % 1.0
+            return lin(x0, y0, x1, y1, [(0, A(St.VIOLET, 0.0)), (max(0.01, ph - 0.15), A(St.CYAN, 0.0)),
+                                        (ph, A(St.CYAN, 0.22)), (min(0.99, ph + 0.15), A(St.VIOLET, 0.0)),
+                                        (1, A(St.VIOLET, 0.0))])
+
         boxes.append(Box((-6.5, 1.2 + rise, -4.4, 6.5, 1.95 + rise, 4.4), die_col, top=mix(die_col, St.CYAN, shimmer),
-                         edge=A(St.CYAN, 0.85), a=a, glow=0.45 * prog(t, c['plaque'], 0.8), edge_w=1.4))
+                         edge=A(St.CYAN, 0.8), a=a, glow=0.35 * prog(t, c['plaque'], 0.8), edge_w=1.4,
+                         sheen=die_sheen))
+        render(p, cam, boxes, amb=0.36)
+        boxes = []
         if a_lid > 0.01:
             ly = 1.2 + rise + lift * 20
-            lid = hex2('#B9C3D6')
-            boxes.append(Box((-17, ly, -17, 17, ly + 3.0, 17), lid, top=hex2('#D5DCE8'), edge=A(St.TEXT, 0.5),
-                             a=a * a_lid, edge_w=1.2))
-        faces = render(p, cam, boxes, amb=0.38)
-        # marquage gravé sur le capot
-        if a_lid > 0.01:
-            ly = 1.2 + rise + lift * 20 + 3.0
-            sx, sy, z, s = cam.project([(0, ly, 0), (-12, ly, -12)])
-            with p.fade(a * a_lid * 0.6):
-                pass
+
+            def lid_sheen(pts):
+                (x0, y0), (x1, y1) = pts[0], pts[2]
+                return lin(x0, y0, x1, y1, [(0, A(St.WHITE, 0.0)), (0.42, A(St.WHITE, 0.16)), (0.5, A(St.WHITE, 0.04)),
+                                            (0.62, A(St.WHITE, 0.10)), (1, A(St.WHITE, 0.0))])
+
+            boxes.append(Box((-17, ly, -17, 17, ly + 3.0, 17), hex2('#79839A'), top=hex2('#8E98AC'),
+                             edge=A(St.TEXT, 0.45), a=a * a_lid, edge_w=1.2, sheen=lid_sheen))
+            render(p, cam, boxes, amb=0.36)
         # étiquettes
         sx, sy, _, _ = cam.project([(13, 1.2 + rise + lift * 20 + 3, -10), (5.5, 1.95 + rise, 3.6)])
         K.label(p, sx[0] + 120, sy[0] - 60, 'Capot métallique', t - c['capot'], ax=sx[0], ay=sy[0],
@@ -325,15 +336,15 @@ class Echelle(Scene):
         view_w, view_h = 1920 / z, 1080 / z
         with p.layer(alpha=a, blur=blur):
             with p.camera(0, 0, z):
-                r0 = int(math.floor((-view_h / 2) / row_h)) - 1
-                r1 = int(math.ceil((view_h / 2) / row_h)) + 1
-                x_min, x_max = -view_w / 2 - 50, view_w / 2 + 50
+                r0 = max(-18, int(math.floor((-view_h / 2) / row_h)) - 1)
+                r1 = min(18, int(math.ceil((view_h / 2) / row_h)) + 1)
+                x_min, x_max = max(-3000.0, -view_w / 2 - 50), min(3000.0, view_w / 2 + 50)
                 for r in range(r0, r1 + 1):
                     y = r * row_h
                     # rails d'alimentation
                     p.rect(x_min, y - 5, x_max - x_min, 10, fill=A(hex2('#5D7BC0'), 0.55))
                     g = np.random.default_rng(1000 + r)
-                    x = -2400.0 + g.uniform(0, 200)
+                    x = -3000.0 + g.uniform(0, 200)
                     while x < x_max:
                         w = pitch * int(g.integers(3, 12))
                         if x + w > x_min:
@@ -354,81 +365,127 @@ class Echelle(Scene):
                 sub='grilles  |  métal  |  alimentation', align='left')
 
     # ----------------------------------------------------------- forêt de transistors
-    def _forest(self, p, t, c, lz, a):
-        k = prog(t, c['z3'] + 0.6, 2.4, E.in_out_cubic)
-        pitch_deg = lerp(87.5, 34, k)
-        yaw = lerp(0, -28, k) + 6 * prog(t, c['forets'], 6, E.in_out_sine)
-        dz = 10 ** (lz - BASE[3])
-        dist = 420 / dz
+    def _forest_cam(self, t, c, lz):
+        k = prog(t, c['z3'] + 0.5, 2.6, E.in_out_cubic)
+        pitch_deg = lerp(87.0, 30.0, k)
+        yaw = lerp(0, -32, k) + 7 * prog(t, c['forets'], 6, E.in_out_sine)
+        dz = 10 ** (min(lz, 4.95) - BASE[3])
+        dist = lerp(760, 640, k) / dz
         cam = Cam3D.orbit(target=(0, 20, 0), dist=dist, yaw=yaw, pitch=pitch_deg, fov=34)
-        fin_col = hex2('#4D6FB8')
-        gate_col = hex2('#8B6CFF')
-        sub = hex2('#18244A')
-        boxes = []
-        nf, ng = 9, 7
+        # approche finale : face avant de l'aileron central
+        k4 = prog(t, c['fines'] - 0.5, 1.6, E.in_out_cubic)
+        if k4 > 0:
+            eye = cam.eye * (1 - k4) + np.array([0.0, 26.0, 262.0]) * k4
+            tgt = cam.target * (1 - k4) + np.array([0.0, 24.0, 250.0]) * k4
+            cam = Cam3D(eye, tgt, fov=34)
+        return cam
+
+    def _forest(self, p, t, c, lz, a):
+        cam = self._forest_cam(t, c, lz)
+        fin_col = hex2('#3E62B0')
+        gate_col = hex2('#6D55D8')
+        sub = hex2('#121B3A')
+        nf, ng = 13, 9
         fp, gp = 30.0, 52.0
-        fw, fh, gl, gh = 7.0, 48.0, 16.0, 70.0
+        fw, fh, gl, gh = 7.0, 48.0, 16.0, 66.0
         X0 = -(nf - 1) * fp / 2
         Z0 = -(ng - 1) * gp / 2
-        boxes.append(Box((-170, -12, -210, 170, 0, 210), sub, edge=A(St.LINE, 0.4), a=a))
-        for i in range(nf):
-            x = X0 + i * fp
-            zs = [-210.0]
-            for j in range(ng):
-                zc = Z0 + j * gp
-                zs += [zc - gl / 2, zc + gl / 2]
-            zs.append(210.0)
-            for s in range(0, len(zs), 2):
-                boxes.append(Box((x - fw / 2, 0, zs[s], x + fw / 2, fh, zs[s + 1]), fin_col,
-                                 top=mix(fin_col, St.CYAN, 0.35), edge=A(St.CYAN, 0.35), a=a, edge_w=0.8))
-        for j in range(ng):
-            zc = Z0 + j * gp
-            boxes.append(Box((-165, 0, zc - gl / 2, 165, gh, zc + gl / 2), gate_col, top=mix(gate_col, St.TEXT, 0.25),
-                             edge=A(St.VIOLET, 0.6), a=a * 0.92, edge_w=0.8, glow=0.12))
-        fog = (dist * 0.6, dist * 1.6, A(St.BG_OUT, 1.0))
-        render(p, cam, boxes, amb=0.35, fog=fog)
+        XE, ZE = -X0 + 22, 250.0
+        render(p, cam, [Box((-XE, -14, -ZE, XE, 0, ZE), sub, top=hex2('#16224A'), edge=A(St.LINE, 0.4), a=a)], amb=0.34)
+        boxes = []
+        fin_x = [X0 + i * fp for i in range(nf)]
+        gz = [Z0 + j * gp for j in range(ng)]
+        # ailerons découpés entre les grilles (pas d'intersection -> tri du peintre fiable)
+        for x in fin_x:
+            zs = [-ZE] + [v for zc in gz for v in (zc - gl / 2, zc + gl / 2)] + [ZE]
+            for s_ in range(0, len(zs), 2):
+                boxes.append(Box((x - fw / 2, 0, zs[s_], x + fw / 2, fh, zs[s_ + 1]), fin_col,
+                                 top=mix(fin_col, St.CYAN, 0.45), edge=A(St.CYAN, 0.45), a=a, edge_w=0.9, glow=0.15))
+        # grilles découpées en segments (au-dessus et entre les ailerons)
+        xs = [-XE] + [v for x in fin_x for v in (x - fw / 2, x + fw / 2)] + [XE]
+        for zc in gz:
+            for s_ in range(len(xs) - 1):
+                x0, x1 = xs[s_], xs[s_ + 1]
+                if x1 - x0 < 0.01:
+                    continue
+                over_fin = (s_ % 2 == 1)
+                y0 = fh if over_fin else 0
+                boxes.append(Box((x0, y0, zc - gl / 2, x1, gh, zc + gl / 2), gate_col,
+                                 top=mix(gate_col, St.TEXT, 0.22), edge=A(St.VIOLET, 0.55), a=a, edge_w=0.7))
+        d = float(np.linalg.norm(cam.eye - cam.target))
+        render(p, cam, boxes, amb=0.34, fog=(d * 0.7, d * 2.2, A(St.BG_OUT, 1.0)))
         # étiquettes
-        sx, sy, _, _ = cam.project([(X0 + 4 * fp, fh, Z0 - gp * 0.5), (0, gh, Z0 + 2 * gp)])
-        la = a * prog(t, c['forets'] + 0.4, 0.5) * (1 - prog(t, c['fines'] - 0.6, 0.4))
-        K.label(p, 1450, 300, 'Grille', t - c['forets'] - 0.6, ax=sx[1], ay=sy[1], a=la, color=St.TEXT)
-        K.label(p, 1450, 800, 'Ailerons (canaux)', t - c['forets'] - 1.0, ax=sx[0], ay=sy[0], a=la)
-        # compteur
-        n = K and 50e9 * E.out_expo(clamp((t - c['mil'] + 1.2) / 2.0))
+        k4 = prog(t, c['fines'] - 0.5, 0.6)
+        sx, sy, _, _ = cam.project([(fin_x[8], fh, gz[1] + gp / 2), (fin_x[5], gh, gz[4])])
+        la = a * prog(t, c['forets'] + 0.4, 0.5) * (1 - k4)
+        K.label(p, 1470, 260, 'Grille', t - c['forets'] - 0.6, ax=sx[1], ay=sy[1], a=la)
+        K.label(p, 1470, 860, 'Ailerons de silicium', t - c['forets'] - 1.0, ax=sx[0], ay=sy[0], a=la,
+                sub='le canal du transistor')
         if t > c['mil'] - 1.2:
-            s = f'{n:,.0f}'.replace(',', ' ')
-            ra = a * (1 - prog(t, c['fines'] - 0.6, 0.4))
-            K.readout(p, 150, 300, 'Transistors sur une puce', s, t - c['mil'] + 1.2, a=ra, size=40)
+            n = 50e9 * E.out_expo(clamp((t - c['mil'] + 1.2) / 2.0))
+            ra = a * (1 - k4)
+            K.readout(p, 150, 300, 'Transistors sur une puce', f'{n:,.0f}'.replace(',', ' '), t - c['mil'] + 1.2,
+                      a=ra, size=40)
             with p.fade(ra * prog(t, c['mil'] + 0.8, 0.5)):
-                p.text('ordre de grandeur', 150, 395, size=16, family='sans', weight=400, color=St.TEXT3)
+                p.text("ordre de grandeur", 150, 395, size=16, family='sans', weight=400, color=St.TEXT3)
 
     # ----------------------------------------------------------------- un aileron
     def _fin(self, p, t, c, lz, a):
+        """Coupe d'un aileron : réseau d'atomes, oxyde de grille, grille enveloppante."""
         z = 10 ** (lz - BASE[4])
-        cx, cy = 960, 560
-        spacing = 58.0
-        with p.fade(a), p.camera(cx, cy, z, ox=cx, oy=cy):
-            # grille enveloppante (coupe) : oxyde + métal
-            fw, fh = 16 * spacing * 0.5, 12 * spacing
-            p.rect(cx - fw - 120, cy - fh / 2 - 120, (fw + 120) * 2, fh + 120, fill=A(St.VIOLET, 0.13), r=60)
-            p.rect(cx - fw - 120, cy - fh / 2 - 120, (fw + 120) * 2, fh + 120, stroke=A(St.VIOLET, 0.55), sw=2,
-                   r=60, glow=0.3)
-            p.rect(cx - fw - 26, cy - fh / 2 - 26, (fw + 26) * 2, fh + 26, fill=A(St.TEXT, 0.06), r=36)
-            p.rect(cx - fw - 26, cy - fh / 2 - 26, (fw + 26) * 2, fh + 26, stroke=A(St.TEXT, 0.35), sw=1.5, r=36)
-            # atomes du canal (réseau projeté)
+        cx, top = 960.0, 330.0
+        sp = 30.0                        # ~0,28 nm entre colonnes d'atomes
+        ncol = 18
+        fw = ncol * sp                   # ≈ 5 nm
+        x0 = cx - fw / 2
+        ox = 34.0                        # oxyde ≈ 1 nm
+        with p.fade(a), p.camera(cx, 560, z, ox=cx, oy=560):
+            gate = skia.Path()
+            gate.addRRect(skia.RRect.MakeRectXY(skia.Rect.MakeLTRB(x0 - ox - 230, top - ox - 170, x0 + fw + ox + 230, 1400),
+                                                140, 140))
+            p.path(gate, fill=A(St.VIOLET, 0.16))
+            p.path(gate, stroke=A(St.VIOLET, 0.6), w=2, glow=0.35)
+            oxp = skia.Path()
+            oxp.addRRect(skia.RRect.MakeRectXY(skia.Rect.MakeLTRB(x0 - ox, top - ox, x0 + fw + ox, 1400), 70, 70))
+            p.path(oxp, fill=hex2('#0A1024'))
+            p.path(oxp, fill=A(St.TEXT, 0.10))
+            p.path(oxp, stroke=A(St.TEXT, 0.4), w=1.4)
+            finp = skia.Path()
+            finp.addRRect(skia.RRect.MakeRectXY(skia.Rect.MakeLTRB(x0, top, x0 + fw, 1400), 46, 46))
+            p.path(finp, fill=hex2('#0B1430'))
+            # atomes (réseau triangulaire, agitation thermique)
             xs, ys = [], []
-            for i in range(-8, 9):
-                for j in range(-6, 7):
-                    x = cx + i * spacing * 0.5 + (spacing * 0.25 if j % 2 else 0)
-                    y = cy + j * spacing * 0.5
-                    if abs(x - cx) <= fw - 10 and y > cy - fh / 2 + 6:
-                        xs.append(x + noise1(t * 1.3 + i * 3.1 + j, 7) * 2.5)
-                        ys.append(y + noise1(t * 1.3 + i * 1.7 + j * 5, 8) * 2.5)
-            na = prog(t, c['atomes'] - 1.2, 1.4, E.out_cubic)
-            if xs:
-                order = np.argsort(np.hypot(np.array(xs) - cx, np.array(ys) - cy))
-                n = int(len(xs) * na)
-                sel = order[:max(n, 1)]
-                p.spheres(np.array(xs)[sel], np.array(ys)[sel], 15, St.SI, glow=0.25)
-        K.dimension(p, cx - fw * z, cy - fh * z / 2 - 60 * z - 40, cx + fw * z, cy - fh * z / 2 - 60 * z - 40, '≈ 5 nm',
-                    t - c['nm'] + 0.2, a=a, size=24)
-        K.label(p, 1420, 860, "Quelques dizaines d'atomes", t - c['atomes'] + 0.2, a=a, sub='Si · silicium')
+            rows = int((1200 - top) / (sp * 0.87))
+            for j in range(rows):
+                y = top + 22 + j * sp * 0.87
+                off = sp / 2 if j % 2 else 0.0
+                for i in range(ncol):
+                    x = x0 + 15 + i * sp + off
+                    if x > x0 + fw - 12:
+                        continue
+                    # coins arrondis
+                    dx = min(x - x0, x0 + fw - x)
+                    dy = y - top
+                    if dx < 46 and dy < 46 and math.hypot(46 - dx, 46 - dy) > 40:
+                        continue
+                    xs.append(x)
+                    ys.append(y)
+            xs, ys = np.array(xs), np.array(ys)
+            ph = np.arange(len(xs)) * 1.7
+            xs = xs + np.sin(t * 9 + ph) * 1.3
+            ys = ys + np.cos(t * 7.3 + ph * 1.3) * 1.3
+            # vague de comptage sur « quelques dizaines d'atomes »
+            wave = prog(t, c['atomes'] - 0.6, 1.4, E.in_out_sine)
+            hot = np.exp(-((xs - (x0 + wave * fw)) / 40.0) ** 2) * (0 < wave < 1)
+            cols = [mix(St.SI, St.CYAN_HOT, float(h) * 0.8) for h in hot]
+            p.spheres(xs, ys, 11.5, cols, glow=0.18)
+        # annotations (repère écran)
+        sx = lambda x: cx + (x - cx) * z
+        sy = lambda y: 560 + (y - 560) * z
+        la = a * prog(lz, 5.9, 0.2)
+        K.dimension(p, sx(x0), sy(top - ox - 80), sx(x0 + fw), sy(top - ox - 80), '≈ 5 nm', t - c['nm'] + 0.2, a=a,
+                    size=24, side=-1)
+        K.label(p, 1500, 330, 'Grille', t - c['nm'] + 0.6, ax=sx(x0 + fw + ox + 120), ay=sy(top + 40), a=la)
+        K.label(p, 1500, 520, 'Oxyde · ≈ 1 nm', t - c['nm'] + 0.9, ax=sx(x0 + fw + ox * 0.5), ay=sy(top + 260), a=la)
+        K.label(p, 120, 760, 'Aileron de silicium', t - c['atomes'] + 0.6, ax=sx(x0 + 40), ay=sy(top + 420), a=la,
+                sub="quelques dizaines d'atomes de large")

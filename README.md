@@ -33,9 +33,7 @@ Durée ≈ 7 min 11 s, 11 scènes, voix off complète générée (57 répliques)
 
 - [x] Script de la voix off (`script.py`)
 - [x] 00 Ouverture : appareil → puce → milliards d'interrupteurs → titre
-- [~] 01 L'échelle : boîtier 3D → plan de la puce → cœur → cellules → transistors 3D → atomes
-  - à faire : capot plus métallique, transition vers la vue de dessus, forêt de transistors (caméra plus éloignée,
-    grilles découpées pour le tri de profondeur), coupe de l'aileron (réseau atomique + grille enveloppante)
+- [x] 01 L'échelle : boîtier 3D → plan de la puce → cœur → cellules → transistors 3D → atomes
 - [ ] 02 Le silicium · 03 Le dopage · 04 Le transistor · 05 Le voyage d'un électron · 06 La logique
 - [ ] 07 L'horloge · 08 La chaleur · 09 La frontière quantique · 10 Finale
 - [ ] Sound design procédural, mixage, mastering (-14 LUFS)
