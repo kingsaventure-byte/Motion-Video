@@ -1,0 +1,7 @@
+skia-python>=144
+numpy
+scipy
+opencv-python-headless
+uharfbuzz
+fonttools
+edge-tts>=7.2
